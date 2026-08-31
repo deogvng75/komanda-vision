@@ -6,6 +6,7 @@ import {
   CircleDollarSign,
   ClipboardList,
   Gauge,
+  Hand,
   Menu,
   Package,
   Settings,
@@ -130,7 +131,7 @@ function Dashboard() {
       <div className="mx-auto flex max-w-[1440px]"><Sidebar />
         <main className="min-w-0 flex-1 px-4 pb-24 pt-6 sm:px-7 sm:pt-8 lg:px-8 lg:pb-10">
           <header className="mb-6">
-            <h1 className="font-display text-[30px] font-semibold leading-tight sm:text-[36px]">Bonjour, Marie <span aria-hidden="true">👋</span></h1>
+            <h1 className="flex items-center gap-2 font-display text-[30px] font-semibold leading-tight sm:text-[36px]">Bonjour, Marie <Hand aria-hidden="true" className="size-7 text-warning sm:size-8" strokeWidth={1.8} /></h1>
             <p className="mt-1 text-sm text-muted-foreground">Voici ce qui se passe dans votre boutique aujourd'hui.</p>
           </header>
 
