@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Bell,
   Box,
@@ -37,8 +37,8 @@ export const Route = createFileRoute("/")({
 });
 
 const navigation = [
-  { label: "Dashboard", icon: Gauge, active: true },
-  { label: "Commandes", icon: ClipboardList },
+  { label: "Dashboard", icon: Gauge, active: true, to: "/" },
+  { label: "Commandes", icon: ClipboardList, to: "/commandes" },
   { label: "Clients", icon: Users },
   { label: "Produits", icon: Package },
   { label: "Ventes", icon: TrendingUp },
@@ -47,8 +47,8 @@ const navigation = [
 ];
 
 const stats = [
-  { label: "CA aujourd'hui", value: "125 000 FCFA", detail: "+12,5 %", icon: CircleDollarSign, positive: true },
-  { label: "CA du mois", value: "2 450 000 FCFA", detail: "+8,2 %", icon: TrendingUp, positive: true },
+  { label: "CA aujourd'hui", value: "125 000 CDF", detail: "+12,5 %", icon: CircleDollarSign, positive: true },
+  { label: "CA du mois", value: "2 450 000 CDF", detail: "+8,2 %", icon: TrendingUp, positive: true },
   { label: "Commandes", value: "87", detail: "+14 cette semaine", icon: ShoppingBag, positive: true },
   { label: "À traiter", value: "12", detail: "Nécessitent une action", icon: ClipboardList, positive: false },
 ];
@@ -60,10 +60,10 @@ const sales = [
 ];
 
 const orders = [
-  { id: "#1052", customer: "Sarah M.", amount: "28 000 FCFA", status: "Confirmée", tone: "success" },
-  { id: "#1051", customer: "David K.", amount: "60 000 FCFA", status: "En livraison", tone: "info" },
-  { id: "#1050", customer: "Marie L.", amount: "45 000 FCFA", status: "Livrée", tone: "neutral" },
-  { id: "#1049", customer: "Alice P.", amount: "35 000 FCFA", status: "Nouvelle", tone: "warning" },
+  { id: "#1052", customer: "Sarah M.", amount: "28 000 CDF", status: "Confirmée", tone: "success" },
+  { id: "#1051", customer: "David K.", amount: "60 000 CDF", status: "En livraison", tone: "info" },
+  { id: "#1050", customer: "Marie L.", amount: "45 000 CDF", status: "Livrée", tone: "neutral" },
+  { id: "#1049", customer: "Alice P.", amount: "35 000 CDF", status: "Nouvelle", tone: "warning" },
 ];
 
 const tasks = [
@@ -84,12 +84,24 @@ function Sidebar() {
         <div><p className="font-display text-[15px] font-semibold leading-none">KOMANDA</p><p className="mt-1 text-[11px] text-muted-foreground">Le copilote commercial</p></div>
       </div>
       <nav aria-label="Navigation principale" className="mt-8 flex flex-col gap-1">
-        {navigation.map(({ label, icon: Icon, active }) => (
-          <a key={label} href="#" aria-current={active ? "page" : undefined} className={active ? "nav-item-active" : "nav-item"}>
-            <Icon className="size-[17px]" strokeWidth={1.8} /><span>{label}</span>
-            {label === "Commandes" && <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">12</span>}
-          </a>
-        ))}
+        {navigation.map(({ label, icon: Icon, active, to }) => {
+          const className = active ? "nav-item-active" : "nav-item";
+          const content = (
+            <>
+              <Icon className="size-[17px]" strokeWidth={1.8} /><span>{label}</span>
+              {label === "Commandes" && <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">12</span>}
+            </>
+          );
+          return to ? (
+            <Link key={label} to={to} aria-current={active ? "page" : undefined} className={className}>
+              {content}
+            </Link>
+          ) : (
+            <a key={label} href="#" aria-current={active ? "page" : undefined} className={className}>
+              {content}
+            </a>
+          );
+        })}
       </nav>
       <div className="mt-auto flex items-center gap-3 rounded-xl border border-border/70 bg-card/65 p-3 backdrop-blur-md">
         <img src={marieAvatar} alt="Marie, propriétaire de Boutique Marie" width={512} height={512} loading="lazy" className="size-10 rounded-full object-cover" />
@@ -115,11 +127,23 @@ function MobileHeader() {
 function MobileNav() {
   return (
     <nav aria-label="Navigation mobile" className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-xl border border-border/80 bg-card/92 px-1 py-1.5 shadow-float backdrop-blur-xl lg:hidden">
-      {navigation.slice(0, 5).map(({ label, icon: Icon, active }) => (
-        <a key={label} href="#" aria-label={label} className={`flex h-12 flex-col items-center justify-center gap-1 rounded-lg text-[9px] font-medium ${active ? "bg-secondary text-primary" : "text-muted-foreground"}`}>
-          <Icon className="size-[18px]" strokeWidth={active ? 2.2 : 1.8} /><span>{label}</span>
-        </a>
-      ))}
+      {navigation.slice(0, 5).map(({ label, icon: Icon, active, to }) => {
+        const className = `flex h-12 flex-col items-center justify-center gap-1 rounded-lg text-[9px] font-medium ${active ? "bg-secondary text-primary" : "text-muted-foreground"}`;
+        const content = (
+          <>
+            <Icon className="size-[18px]" strokeWidth={active ? 2.2 : 1.8} /><span>{label}</span>
+          </>
+        );
+        return to ? (
+          <Link key={label} to={to} aria-label={label} className={className}>
+            {content}
+          </Link>
+        ) : (
+          <a key={label} href="#" aria-label={label} className={className}>
+            {content}
+          </a>
+        );
+      })}
     </nav>
   );
 }
@@ -147,7 +171,7 @@ function Dashboard() {
 
           <section className="mt-3.5 grid grid-cols-1 gap-3.5 lg:grid-cols-3">
             <article className="content-card lg:col-span-2">
-              <div className="mb-5 flex items-start justify-between"><div><h2 className="section-title">Évolution des ventes</h2><p className="mt-0.5 text-xs text-muted-foreground">7 derniers jours · 560 000 FCFA</p></div><span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-success">↑ 9,1 %</span></div>
+              <div className="mb-5 flex items-start justify-between"><div><h2 className="section-title">Évolution des ventes</h2><p className="mt-0.5 text-xs text-muted-foreground">7 derniers jours · 560 000 CDF</p></div><span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-success">↑ 9,1 %</span></div>
               <div className="flex h-48 items-end justify-between gap-2 sm:gap-3" aria-label="Graphique des ventes des sept derniers jours">
                 {sales.map(({ day, value }, index) => <div key={day} className="flex h-full flex-1 flex-col items-center justify-end gap-2"><div className="flex w-full flex-1 items-end"><div className={`sales-bar ${index === sales.length - 1 ? "sales-bar-current" : ""}`} style={{ height: `${value}%`, animationDelay: `${280 + index * 45}ms` }} /></div><span className={`text-[10px] sm:text-[11px] ${index === sales.length - 1 ? "font-semibold text-primary" : "text-muted-foreground"}`}>{day}</span></div>)}
               </div>

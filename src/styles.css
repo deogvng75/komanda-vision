@@ -150,6 +150,7 @@ a { text-decoration: none; }
 @utility status-info { background: color-mix(in oklab, var(--info) 12%, transparent); color: var(--info); }
 @utility status-neutral { background: var(--muted); color: var(--muted-foreground); }
 @utility status-warning { background: color-mix(in oklab, var(--warning) 13%, transparent); color: var(--warning); }
+@utility status-danger { background: color-mix(in oklab, var(--warning) 10%, transparent); color: var(--warning); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
