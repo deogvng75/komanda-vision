@@ -59,6 +59,15 @@ const filters = [
   "Annulées",
 ];
 
+const filterToStatus: Record<string, string> = {
+  Nouvelles: "Nouvelle",
+  Confirmées: "Confirmée",
+  "En préparation": "En préparation",
+  "En livraison": "En livraison",
+  Livrées: "Livrée",
+  Annulées: "Annulée",
+};
+
 const orders = [
   {
     id: "#1052",
