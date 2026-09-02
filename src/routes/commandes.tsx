@@ -330,7 +330,7 @@ function CommandesPage() {
           field.toLowerCase().includes(search.trim().toLowerCase())
         ) || order.rawAmount.toString().includes(search.trim());
       const matchesFilter =
-        activeFilter === "Toutes" || order.status.toLowerCase() === activeFilter.toLowerCase();
+        activeFilter === "Toutes" || order.status === filterToStatus[activeFilter];
       return matchesSearch && matchesFilter;
     });
   }, [search, activeFilter]);
