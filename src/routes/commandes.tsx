@@ -42,7 +42,7 @@ export const Route = createFileRoute("/commandes")({
 const navigation = [
   { label: "Dashboard", icon: Gauge, to: "/" },
   { label: "Commandes", icon: ClipboardList, active: true, to: "/commandes" },
-  { label: "Clients", icon: Users },
+  { label: "Clients", icon: Users, to: "/clients" },
   { label: "Produits", icon: Package },
   { label: "Ventes", icon: TrendingUp },
   { label: "Notifications", icon: Bell },
