@@ -44,7 +44,7 @@ const navigation = [
   { label: "Commandes", icon: ClipboardList, active: true, to: "/commandes" },
   { label: "Clients", icon: Users, to: "/clients" },
   { label: "Produits", icon: Package, to: "/produits" },
-  { label: "Ventes", icon: TrendingUp },
+  { label: "Ventes", icon: TrendingUp, to: "/ventes" },
   { label: "Notifications", icon: Bell },
   { label: "Paramètres", icon: Settings },
 ];

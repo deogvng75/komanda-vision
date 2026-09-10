@@ -40,7 +40,7 @@ const navigation = [
   { label: "Commandes", icon: ClipboardList, to: "/commandes" },
   { label: "Clients", icon: Users, active: true, to: "/clients" },
   { label: "Produits", icon: Package, to: "/produits" },
-  { label: "Ventes", icon: TrendingUp },
+  { label: "Ventes", icon: TrendingUp, to: "/ventes" },
   { label: "Notifications", icon: Bell },
   { label: "Paramètres", icon: Settings },
 ];
