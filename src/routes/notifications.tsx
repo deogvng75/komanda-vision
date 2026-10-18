@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Bell,
   CheckCheck,
+  ChevronRight,
   ClipboardList,
   CircleDollarSign,
   Gauge,
@@ -10,8 +11,15 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import marieAvatar from "../assets/marie-avatar.jpg";
+import {
+  DEFAULT_NOTIFICATIONS,
+  loadNotifications,
+  saveNotifications,
+  type NotificationItem,
+  type NotificationType,
+} from "../lib/notifications";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -19,12 +27,12 @@ export const Route = createFileRoute("/notifications")({
       { title: "Notifications | KOMANDA" },
       {
         name: "description",
-        content: "Restez informé des activités importantes de votre boutique avec KOMANDA.",
+        content: "Retrouvez toutes les activités importantes de votre boutique avec KOMANDA.",
       },
       { property: "og:title", content: "Notifications | KOMANDA" },
       {
         property: "og:description",
-        content: "Restez informé des activités importantes de votre boutique avec KOMANDA.",
+        content: "Retrouvez toutes les activités importantes de votre boutique avec KOMANDA.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -41,19 +49,7 @@ type NavItem = {
   badge?: number;
 };
 
-const navigation: NavItem[] = [
-  { label: "Dashboard", icon: Gauge, to: "/" },
-  { label: "Commandes", icon: ClipboardList, to: "/commandes", badge: 12 },
-  { label: "Clients", icon: Users, to: "/clients" },
-  { label: "Produits", icon: Package, to: "/produits" },
-  { label: "Ventes", icon: TrendingUp, to: "/ventes" },
-  { label: "Notifications", icon: Bell, active: true, to: "/notifications" },
-  { label: "Paramètres", icon: Settings },
-];
-
 const filters = ["Toutes", "Non lues", "Commandes", "Stock", "Paiements"];
-
-type NotificationType = "Commande" | "Stock" | "Paiement";
 
 const typeIcon: Record<NotificationType, typeof ClipboardList> = {
   Commande: ClipboardList,
@@ -67,58 +63,6 @@ const typeTone: Record<NotificationType, string> = {
   Paiement: "success",
 };
 
-type NotificationItem = {
-  id: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  time: string;
-  unread: boolean;
-};
-
-const initialNotifications: NotificationItem[] = [
-  {
-    id: "n1",
-    type: "Commande",
-    title: "Nouvelle commande",
-    message: "La commande #1052 de Sarah M. a été confirmée.",
-    time: "Il y a 5 min",
-    unread: true,
-  },
-  {
-    id: "n2",
-    type: "Stock",
-    title: "Stock faible",
-    message: "Sneakers Classic : il ne reste que 3 unités.",
-    time: "Il y a 30 min",
-    unread: true,
-  },
-  {
-    id: "n3",
-    type: "Paiement",
-    title: "Paiement reçu",
-    message: "Paiement de 60 000 CDF reçu pour la commande #1051.",
-    time: "Il y a 1 h",
-    unread: true,
-  },
-  {
-    id: "n4",
-    type: "Commande",
-    title: "Nouvelle commande",
-    message: "La commande #1050 de Marie L. a été livrée.",
-    time: "Hier",
-    unread: false,
-  },
-  {
-    id: "n5",
-    type: "Stock",
-    title: "Stock faible",
-    message: "Parfum Signature : il ne reste que 2 unités.",
-    time: "Hier",
-    unread: false,
-  },
-];
-
 function BrandMark() {
   return (
     <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary font-display text-sm font-bold text-primary-foreground shadow-brand">
@@ -128,6 +72,15 @@ function BrandMark() {
 }
 
 function Sidebar({ notificationsBadge }: { notificationsBadge?: number }) {
+  const navigation: NavItem[] = [
+    { label: "Dashboard", icon: Gauge, to: "/" },
+    { label: "Commandes", icon: ClipboardList, to: "/commandes", badge: 12 },
+    { label: "Clients", icon: Users, to: "/clients" },
+    { label: "Produits", icon: Package, to: "/produits" },
+    { label: "Ventes", icon: TrendingUp, to: "/ventes" },
+    { label: "Notifications", icon: Bell, active: true, to: "/notifications" },
+    { label: "Paramètres", icon: Settings },
+  ];
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border/70 bg-sidebar/72 px-5 py-6 backdrop-blur-xl lg:flex">
       <div className="flex items-center gap-2.5 px-1">
@@ -210,12 +163,19 @@ function MobileHeader({ unreadCount }: { unreadCount: number }) {
 }
 
 function MobileNav() {
+  const navigation: NavItem[] = [
+    { label: "Dashboard", icon: Gauge, to: "/" },
+    { label: "Commandes", icon: ClipboardList, to: "/commandes" },
+    { label: "Clients", icon: Users, to: "/clients" },
+    { label: "Produits", icon: Package, to: "/produits" },
+    { label: "Ventes", icon: TrendingUp, to: "/ventes" },
+  ];
   return (
     <nav
       aria-label="Navigation mobile"
       className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-xl border border-border/80 bg-card/92 px-1 py-1.5 shadow-float backdrop-blur-xl lg:hidden"
     >
-      {navigation.slice(0, 5).map(({ label, icon: Icon, active, to }) => {
+      {navigation.map(({ label, icon: Icon, active, to }) => {
         const className = `flex h-12 flex-col items-center justify-center gap-1 rounded-lg text-[9px] font-medium ${active ? "bg-secondary text-primary" : "text-muted-foreground"}`;
         const content = (
           <>
@@ -238,8 +198,18 @@ function MobileNav() {
 }
 
 function NotificationsPage() {
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(DEFAULT_NOTIFICATIONS);
   const [filter, setFilter] = useState("Toutes");
+
+  // Restaure l'état lu/non lu enregistré localement après hydratation.
+  useEffect(() => {
+    setNotifications(loadNotifications());
+  }, []);
+
+  // Persiste chaque changement d'état.
+  useEffect(() => {
+    saveNotifications(notifications);
+  }, [notifications]);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
@@ -267,9 +237,14 @@ function NotificationsPage() {
             <div>
               <h1 className="flex items-center gap-2 font-display text-[30px] font-semibold leading-tight sm:text-[36px]">
                 Notifications
+                {unreadCount > 0 && (
+                  <span className="rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground">
+                    {unreadCount} non lue{unreadCount > 1 ? "s" : ""}
+                  </span>
+                )}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Restez informé des activités importantes de votre boutique.
+                Retrouvez toutes les activités importantes de votre boutique.
               </p>
             </div>
             <button
@@ -304,14 +279,12 @@ function NotificationsPage() {
               {filteredNotifications.map((n) => {
                 const Icon = typeIcon[n.type];
                 return (
-                  <button
+                  <div
                     key={n.id}
-                    onClick={() => markRead(n.id)}
-                    title={n.unread ? "Marquer comme lue" : undefined}
-                    className={`flex w-full items-start gap-3 rounded-xl border p-3.5 text-left transition-colors ${
+                    className={`flex w-full items-start gap-3 rounded-xl border p-3.5 transition-colors ${
                       n.unread
                         ? "border-primary/15 bg-secondary/50"
-                        : "border-transparent bg-muted/40 hover:bg-muted/70"
+                        : "border-transparent bg-muted/40"
                     }`}
                   >
                     <span
@@ -321,13 +294,26 @@ function NotificationsPage() {
                     >
                       <Icon className="size-[18px]" strokeWidth={1.8} />
                     </span>
-                    <span className="min-w-0 flex-1">
+                    <button
+                      onClick={() => markRead(n.id)}
+                      title={n.unread ? "Marquer comme lue" : undefined}
+                      className="min-w-0 flex-1 text-left"
+                    >
                       <span className="flex flex-wrap items-center gap-2">
                         <span className={`text-sm ${n.unread ? "font-semibold" : "font-medium"}`}>{n.title}</span>
                         <span className={`status-badge status-${typeTone[n.type]}`}>{n.type}</span>
                       </span>
                       <span className="mt-0.5 block text-sm text-muted-foreground">{n.message}</span>
-                    </span>
+                      {n.detailsTo && (
+                        <Link
+                          to={n.detailsTo}
+                          className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                        >
+                          Voir les détails
+                          <ChevronRight className="size-3.5" />
+                        </Link>
+                      )}
+                    </button>
                     <span className="flex shrink-0 flex-col items-end gap-1.5">
                       <span className="whitespace-nowrap text-[11px] text-muted-foreground">{n.time}</span>
                       <span
@@ -335,7 +321,7 @@ function NotificationsPage() {
                         aria-label={n.unread ? "Non lue" : "Lue"}
                       />
                     </span>
-                  </button>
+                  </div>
                 );
               })}
               {filteredNotifications.length === 0 && (
