@@ -71,7 +71,7 @@ function BrandMark() {
   );
 }
 
-function Sidebar({ notificationsBadge }: { notificationsBadge?: number }) {
+function Sidebar({ notificationsBadge }: { notificationsBadge?: number | undefined }) {
   const navigation: NavItem[] = [
     { label: "Dashboard", icon: Gauge, to: "/" },
     { label: "Commandes", icon: ClipboardList, to: "/commandes", badge: 12 },
