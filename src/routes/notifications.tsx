@@ -79,7 +79,7 @@ function Sidebar({ notificationsBadge }: { notificationsBadge?: number | undefin
     { label: "Produits", icon: Package, to: "/produits" },
     { label: "Ventes", icon: TrendingUp, to: "/ventes" },
     { label: "Notifications", icon: Bell, active: true, to: "/notifications" },
-    { label: "Paramètres", icon: Settings },
+    { label: "Paramètres", icon: Settings, to: "/parametres" },
   ];
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border/70 bg-sidebar/72 px-5 py-6 backdrop-blur-xl lg:flex">

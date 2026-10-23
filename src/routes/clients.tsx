@@ -43,7 +43,7 @@ const navigation = [
   { label: "Produits", icon: Package, to: "/produits" },
   { label: "Ventes", icon: TrendingUp, to: "/ventes" },
   { label: "Notifications", icon: Bell, to: "/notifications" },
-  { label: "Paramètres", icon: Settings },
+  { label: "Paramètres", icon: Settings, to: "/parametres" },
 ];
 
 const clients = [
