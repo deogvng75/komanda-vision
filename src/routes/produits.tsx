@@ -46,7 +46,7 @@ const navigation = [
   { label: "Produits", icon: Package, active: true, to: "/produits" },
   { label: "Ventes", icon: TrendingUp, to: "/ventes" },
   { label: "Notifications", icon: Bell, to: "/notifications" },
-  { label: "Paramètres", icon: Settings },
+  { label: "Paramètres", icon: Settings, to: "/parametres" },
 ];
 
 const categories = ["Toutes", "Vêtements", "Chaussures", "Accessoires", "Beauté"];

@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as CommandesRouteImport } from './routes/commandes'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as ParametresRouteImport } from './routes/parametres'
 import { Route as ProduitsRouteImport } from './routes/produits'
 import { Route as VentesRouteImport } from './routes/ventes'
 
@@ -36,6 +37,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ParametresRoute = ParametresRouteImport.update({
+  id: '/parametres',
+  path: '/parametres',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProduitsRoute = ProduitsRouteImport.update({
   id: '/produits',
   path: '/produits',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/clients': typeof ClientsRoute
   '/commandes': typeof CommandesRoute
   '/notifications': typeof NotificationsRoute
+  '/parametres': typeof ParametresRoute
   '/produits': typeof ProduitsRoute
   '/ventes': typeof VentesRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/clients': typeof ClientsRoute
   '/commandes': typeof CommandesRoute
   '/notifications': typeof NotificationsRoute
+  '/parametres': typeof ParametresRoute
   '/produits': typeof ProduitsRoute
   '/ventes': typeof VentesRoute
 }
@@ -69,22 +77,36 @@ export interface FileRoutesById {
   '/clients': typeof ClientsRoute
   '/commandes': typeof CommandesRoute
   '/notifications': typeof NotificationsRoute
+  '/parametres': typeof ParametresRoute
   '/produits': typeof ProduitsRoute
   '/ventes': typeof VentesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/clients' | '/commandes' | '/notifications' | '/produits' | '/ventes'
+    | '/'
+    | '/clients'
+    | '/commandes'
+    | '/notifications'
+    | '/parametres'
+    | '/produits'
+    | '/ventes'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/' | '/clients' | '/commandes' | '/notifications' | '/produits' | '/ventes'
+    | '/'
+    | '/clients'
+    | '/commandes'
+    | '/notifications'
+    | '/parametres'
+    | '/produits'
+    | '/ventes'
   id:
     | '__root__'
     | '/'
     | '/clients'
     | '/commandes'
     | '/notifications'
+    | '/parametres'
     | '/produits'
     | '/ventes'
   fileRoutesById: FileRoutesById
@@ -94,6 +116,7 @@ export interface RootRouteChildren {
   ClientsRoute: typeof ClientsRoute
   CommandesRoute: typeof CommandesRoute
   NotificationsRoute: typeof NotificationsRoute
+  ParametresRoute: typeof ParametresRoute
   ProduitsRoute: typeof ProduitsRoute
   VentesRoute: typeof VentesRoute
 }
@@ -128,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/parametres': {
+      id: '/parametres'
+      path: '/parametres'
+      fullPath: '/parametres'
+      preLoaderRoute: typeof ParametresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/produits': {
       id: '/produits'
       path: '/produits'
@@ -150,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClientsRoute: ClientsRoute,
   CommandesRoute: CommandesRoute,
   NotificationsRoute: NotificationsRoute,
+  ParametresRoute: ParametresRoute,
   ProduitsRoute: ProduitsRoute,
   VentesRoute: VentesRoute,
 }
