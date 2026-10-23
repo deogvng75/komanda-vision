@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useUnreadNotifications } from "../lib/notifications";
 import {
   Bell,
   CheckCircle2,
@@ -43,7 +44,7 @@ const navigation = [
   { label: "Clients", icon: Users, to: "/clients" },
   { label: "Produits", icon: Package, to: "/produits" },
   { label: "Ventes", icon: TrendingUp, active: true, to: "/ventes" },
-  { label: "Notifications", icon: Bell },
+  { label: "Notifications", icon: Bell, to: "/notifications" },
   { label: "Paramètres", icon: Settings },
 ];
 
@@ -130,6 +131,7 @@ function BrandMark() {
 }
 
 function Sidebar() {
+  const unreadNotifications = useUnreadNotifications();
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border/70 bg-sidebar/72 px-5 py-6 backdrop-blur-xl lg:flex">
       <div className="flex items-center gap-2.5 px-1">
@@ -149,6 +151,11 @@ function Sidebar() {
               {label === "Commandes" && (
                 <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
                   12
+                </span>
+              )}
+              {label === "Notifications" && unreadNotifications > 0 && (
+                <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
+                  {unreadNotifications}
                 </span>
               )}
             </>
@@ -191,13 +198,13 @@ function MobileHeader() {
         <span className="font-display font-semibold">KOMANDA</span>
       </div>
       <div className="flex items-center gap-2">
-        <a
-          href="#notifications"
+        <Link
+          to="/notifications"
           aria-label="Notifications"
           className="grid size-9 place-items-center rounded-lg border border-border bg-card text-muted-foreground"
         >
           <Bell className="size-[17px]" />
-        </a>
+        </Link>
         <img src={marieAvatar} alt="Marie" width={512} height={512} className="size-9 rounded-full object-cover" />
       </div>
     </header>
