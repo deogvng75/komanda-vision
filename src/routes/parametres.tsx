@@ -394,7 +394,7 @@ function ParametresPage() {
                     type="button"
                     className={`h-9 rounded-lg border px-3.5 text-sm font-semibold transition-colors ${
                       action === "Supprimer"
-                        ? "border-danger/40 text-danger hover:bg-danger/10"
+                        ? "border-warning/40 text-warning hover:bg-warning/10"
                         : "border-border bg-card text-foreground hover:bg-muted"
                     }`}
                   >
