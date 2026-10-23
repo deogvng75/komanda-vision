@@ -43,6 +43,7 @@ type NavItem = {
   icon: typeof Gauge;
   active?: boolean;
   to?: string;
+  badge?: number;
 };
 
 type ToggleRow = {
@@ -367,7 +368,7 @@ function ParametresPage() {
                     <p className="text-sm font-medium">{label}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
                   </div>
-                  <ToggleSwitch checked={enabledToggles[id]} onChange={() => toggle(id)} label={label} />
+                  <ToggleSwitch checked={Boolean(enabledToggles[id])} onChange={() => toggle(id)} label={label} />
                 </div>
               ))}
             </div>
