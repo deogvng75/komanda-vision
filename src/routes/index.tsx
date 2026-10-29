@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useUnreadNotifications } from "../lib/notifications";
 import {
   Box,
   CheckCircle2,
