@@ -1,53 +1,41 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { CheckCircle2, ClipboardList, Plus, Search } from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
+import { AppShell } from "../components/AppShell";
+import { Modal } from "../components/Modal";
 import {
-  Bell,
-  Box,
-  CheckCircle2,
-  ClipboardList,
-  Gauge,
-  Hand,
-  Menu,
-  Package,
-  Plus,
-  Search,
-  Settings,
-  ShoppingBag,
-  TrendingUp,
-  Users,
-  X,
-} from "lucide-react";
-import { useMemo, useState } from "react";
-import marieAvatar from "../assets/marie-avatar.jpg";
+  formatDate,
+  formatMoney,
+  newId,
+  orderStatusTone,
+  ORDER_STATUSES,
+  PAYMENT_METHODS,
+  stockStatus,
+  useClients,
+  useOrders,
+  useProducts,
+  useSettingsSnapshot,
+  type Client,
+  type Order,
+  type OrderStatus,
+  type PaymentStatus,
+  type Product,
+} from "../lib/data";
+import { pushNotification } from "../lib/notifications";
 
 export const Route = createFileRoute("/commandes")({
   head: () => ({
     meta: [
       { title: "Commandes | KOMANDA" },
-      {
-        name: "description",
-        content: "Gérez et suivez toutes vos commandes avec KOMANDA.",
-      },
+      { name: "description", content: "Gérez et suivez toutes vos commandes avec KOMANDA." },
       { property: "og:title", content: "Commandes | KOMANDA" },
-      {
-        property: "og:description",
-        content: "Gérez et suivez toutes vos commandes avec KOMANDA.",
-      },
+      { property: "og:description", content: "Gérez et suivez toutes vos commandes avec KOMANDA." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: CommandesPage,
 });
-
-const navigation = [
-  { label: "Dashboard", icon: Gauge, to: "/" },
-  { label: "Commandes", icon: ClipboardList, active: true, to: "/commandes" },
-  { label: "Clients", icon: Users, to: "/clients" },
-  { label: "Produits", icon: Package, to: "/produits" },
-  { label: "Ventes", icon: TrendingUp, to: "/ventes" },
-  { label: "Notifications", icon: Bell },
-  { label: "Paramètres", icon: Settings },
-];
 
 const filters = [
   "Toutes",
@@ -59,7 +47,7 @@ const filters = [
   "Annulées",
 ];
 
-const filterToStatus: Record<string, string> = {
+const filterToStatus: Record<string, OrderStatus> = {
   Nouvelles: "Nouvelle",
   Confirmées: "Confirmée",
   "En préparation": "En préparation",
@@ -68,392 +56,570 @@ const filterToStatus: Record<string, string> = {
   Annulées: "Annulée",
 };
 
-const orders = [
-  {
-    id: "#1052",
-    customer: "Sarah M.",
-    product: "Robe Élégance",
-    quantity: 1,
-    amount: "28 000 CDF",
-    rawAmount: 28000,
-    status: "Confirmée",
-    payment: "Paiement mobile (Airtel Money)",
-    address: "12 Av. de la Justice, Kinshasa",
-  },
-  {
-    id: "#1051",
-    customer: "David K.",
-    product: "Sneakers Classic",
-    quantity: 1,
-    amount: "60 000 CDF",
-    rawAmount: 60000,
-    status: "En livraison",
-    payment: "Espèces à la livraison",
-    address: "45 Blvd du 30 Juin, Kinshasa",
-  },
-  {
-    id: "#1050",
-    customer: "Marie L.",
-    product: "Sac Milano",
-    quantity: 1,
-    amount: "45 000 CDF",
-    rawAmount: 45000,
-    status: "Livrée",
-    payment: "Carte bancaire",
-    address: "78 Av. Kasa-Vubu, Kinshasa",
-  },
-  {
-    id: "#1049",
-    customer: "Alice P.",
-    product: "Parfum Signature",
-    quantity: 2,
-    amount: "35 000 CDF",
-    rawAmount: 35000,
-    status: "Nouvelle",
-    payment: "En attente",
-    address: "21 Rue de l’Espoir, Kinshasa",
-  },
-  {
-    id: "#1048",
-    customer: "Kevin B.",
-    product: "Montre Prestige",
-    quantity: 1,
-    amount: "75 000 CDF",
-    rawAmount: 75000,
-    status: "En préparation",
-    payment: "Paiement mobile (M-Pesa)",
-    address: "9 Blvd Lumumba, Kinshasa",
-  },
-];
+const inputClass =
+  "w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/40";
 
-function statusTone(status: string) {
-  switch (status) {
-    case "Confirmée":
-      return "success";
-    case "En préparation":
-    case "En livraison":
-      return "info";
-    case "Livrée":
-      return "neutral";
-    case "Nouvelle":
-      return "warning";
-    case "Annulée":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
+type NewOrderInput = {
+  client: Client;
+  product: Product;
+  quantity: number;
+  paymentMethod: string;
+  paymentStatus: PaymentStatus;
+  address: string;
+};
 
-function BrandMark() {
-  return (
-    <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary font-display text-sm font-bold text-primary-foreground shadow-brand">
-      K
-    </div>
-  );
-}
+function NewOrderForm({
+  clients,
+  products,
+  currency,
+  onSave,
+  onClose,
+}: {
+  clients: Client[];
+  products: Product[];
+  currency: string;
+  onSave: (input: NewOrderInput) => void;
+  onClose: () => void;
+}) {
+  const available = products.filter((p) => p.stock > 0);
+  const [clientId, setClientId] = useState("");
+  const [productId, setProductId] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS[0]);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("En attente");
+  const [address, setAddress] = useState("");
+  const [error, setError] = useState("");
 
-function Sidebar() {
-  return (
-    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border/70 bg-sidebar/72 px-5 py-6 backdrop-blur-xl lg:flex">
-      <div className="flex items-center gap-2.5 px-1">
-        <BrandMark />
-        <div>
-          <p className="font-display text-[15px] font-semibold leading-none">KOMANDA</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">Le copilote commercial</p>
-        </div>
-      </div>
-      <nav aria-label="Navigation principale" className="mt-8 flex flex-col gap-1">
-        {navigation.map(({ label, icon: Icon, active, to }) => {
-          const className = active ? "nav-item-active" : "nav-item";
-          const content = (
-            <>
-              <Icon className="size-[17px]" strokeWidth={1.8} />
-              <span>{label}</span>
-              {label === "Commandes" && (
-                <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
-                  12
-                </span>
-              )}
-            </>
-          );
-          return to ? (
-            <Link key={label} to={to} aria-current={active ? "page" : undefined} className={className}>
-              {content}
-            </Link>
-          ) : (
-            <a key={label} href="#" aria-current={active ? "page" : undefined} className={className}>
-              {content}
-            </a>
-          );
-        })}
-      </nav>
-      <div className="mt-auto flex items-center gap-3 rounded-xl border border-border/70 bg-card/65 p-3 backdrop-blur-md">
-        <img
-          src={marieAvatar}
-          alt="Marie, propriétaire de Boutique Marie"
-          width={512}
-          height={512}
-          loading="lazy"
-          className="size-10 rounded-full object-cover"
-        />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">Boutique Marie</p>
-          <p className="truncate text-[11px] text-muted-foreground">Marie D.</p>
-        </div>
-        <span className="ml-auto size-2 rounded-full bg-success" aria-label="En ligne" />
-      </div>
-    </aside>
-  );
-}
-
-function MobileHeader() {
-  return (
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/70 bg-background/85 px-4 py-3 backdrop-blur-xl lg:hidden">
-      <div className="flex items-center gap-2.5">
-        <BrandMark />
-        <span className="font-display font-semibold">KOMANDA</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <a
-          href="#notifications"
-          aria-label="Notifications"
-          className="grid size-9 place-items-center rounded-lg border border-border bg-card text-muted-foreground"
+  if (clients.length === 0 || available.length === 0) {
+    return (
+      <Modal title="Nouvelle commande" onClose={onClose} maxWidth="max-w-sm">
+        <p className="text-sm text-muted-foreground">
+          {clients.length === 0
+            ? "Pour créer une commande, ajoutez d'abord au moins un client."
+            : "Pour créer une commande, ajoutez d'abord un produit en stock."}
+        </p>
+        <Link
+          to={clients.length === 0 ? "/clients" : "/produits"}
+          className="mt-5 block w-full rounded-lg bg-primary py-2.5 text-center text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          <Bell className="size-[17px]" />
-        </a>
-        <img src={marieAvatar} alt="Marie" width={512} height={512} className="size-9 rounded-full object-cover" />
-      </div>
-    </header>
-  );
-}
+          {clients.length === 0 ? "Aller aux clients" : "Aller aux produits"}
+        </Link>
+      </Modal>
+    );
+  }
 
-function MobileNav() {
-  return (
-    <nav
-      aria-label="Navigation mobile"
-      className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-xl border border-border/80 bg-card/92 px-1 py-1.5 shadow-float backdrop-blur-xl lg:hidden"
-    >
-      {navigation.slice(0, 5).map(({ label, icon: Icon, active, to }) => {
-        const className = `flex h-12 flex-col items-center justify-center gap-1 rounded-lg text-[9px] font-medium ${active ? "bg-secondary text-primary" : "text-muted-foreground"}`;
-        const content = (
-          <>
-            <Icon className="size-[18px]" strokeWidth={active ? 2.2 : 1.8} />
-            <span>{label}</span>
-          </>
-        );
-        return to ? (
-          <Link key={label} to={to} aria-label={label} className={className}>
-            {content}
-          </Link>
-        ) : (
-          <a key={label} href="#" aria-label={label} className={className}>
-            {content}
-          </a>
-        );
-      })}
-    </nav>
-  );
-}
+  const selectedProduct = available.find((p) => p.id === productId);
+  const parsedQuantity = Number(quantity);
+  const total =
+    selectedProduct && Number.isInteger(parsedQuantity) && parsedQuantity > 0
+      ? selectedProduct.price * parsedQuantity
+      : 0;
 
-function OrderDetail({ order, onClose }: { order: (typeof orders)[number]; onClose: () => void }) {
+  const handleClientChange = (id: string) => {
+    setClientId(id);
+    setAddress(clients.find((c) => c.id === id)?.address ?? "");
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const client = clients.find((c) => c.id === clientId);
+    if (!client) return setError("Choisissez un client.");
+    if (!selectedProduct) return setError("Choisissez un produit.");
+    if (!Number.isInteger(parsedQuantity) || parsedQuantity < 1)
+      return setError("La quantité doit être un nombre entier, 1 ou plus.");
+    if (parsedQuantity > selectedProduct.stock)
+      return setError(`Il ne reste que ${selectedProduct.stock} unité(s) en stock pour ce produit.`);
+    onSave({
+      client,
+      product: selectedProduct,
+      quantity: parsedQuantity,
+      paymentMethod,
+      paymentStatus,
+      address: address.trim(),
+    });
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="w-full max-w-md rounded-t-2xl border border-border/70 bg-card p-5 shadow-float backdrop-blur-xl sm:rounded-2xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold">Détail de la commande</h2>
-          <button
-            onClick={onClose}
-            aria-label="Fermer"
-            className="grid size-8 place-items-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-accent"
+    <Modal title="Nouvelle commande" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="order-client" className="text-xs font-medium text-muted-foreground">
+            Client
+          </label>
+          <select
+            id="order-client"
+            value={clientId}
+            onChange={(e) => handleClientChange(e.target.value)}
+            className={inputClass}
           >
-            <X className="size-4" />
+            <option value="">Choisir un client</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="order-product" className="text-xs font-medium text-muted-foreground">
+            Produit
+          </label>
+          <select
+            id="order-product"
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">Choisir un produit</option>
+            {available.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} — {formatMoney(p.price, currency)} ({p.stock} en stock)
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="order-quantity" className="text-xs font-medium text-muted-foreground">
+              Quantité
+            </label>
+            <input
+              id="order-quantity"
+              type="text"
+              inputMode="numeric"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Montant</span>
+            <p className="rounded-lg bg-muted/70 px-3 py-2.5 text-sm font-semibold tabular-nums">
+              {formatMoney(total, currency)}
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="order-method" className="text-xs font-medium text-muted-foreground">
+              Mode de paiement
+            </label>
+            <select
+              id="order-method"
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className={inputClass}
+            >
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="order-payment" className="text-xs font-medium text-muted-foreground">
+              Paiement
+            </label>
+            <select
+              id="order-payment"
+              value={paymentStatus}
+              onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
+              className={inputClass}
+            >
+              <option value="En attente">En attente</option>
+              <option value="Payée">Payée</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="order-address" className="text-xs font-medium text-muted-foreground">
+            Adresse de livraison (facultatif)
+          </label>
+          <input
+            id="order-address"
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+
+        {error && (
+          <p role="alert" className="text-sm font-medium text-warning">
+            {error}
+          </p>
+        )}
+
+        <div className="flex gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-lg border border-input bg-background py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            className="flex-1 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Créer la commande
           </button>
         </div>
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Numéro</span>
-            <span className="font-semibold text-primary">{order.id}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Client</span>
-            <span className="font-medium">{order.customer}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Produit</span>
-            <span className="font-medium">{order.product}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Quantité</span>
-            <span className="font-medium">{order.quantity}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Montant</span>
-            <span className="font-semibold tabular-nums">{order.amount}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Paiement</span>
-            <span className="font-medium">{order.payment}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Adresse</span>
-            <span className="max-w-[55%] text-right font-medium">{order.address}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Statut</span>
-            <span className={`status-badge status-${statusTone(order.status)}`}>
-              {statusTone(order.status) === "success" && <CheckCircle2 className="size-3" />}
-              {order.status}
-            </span>
-          </div>
+      </form>
+    </Modal>
+  );
+}
+
+function OrderDetail({
+  order,
+  currency,
+  onStatusChange,
+  onPaymentChange,
+  onClose,
+}: {
+  order: Order;
+  currency: string;
+  onStatusChange: (status: OrderStatus) => void;
+  onPaymentChange: (status: PaymentStatus) => void;
+  onClose: () => void;
+}) {
+  const cancelled = order.status === "Annulée";
+  const tone = orderStatusTone(order.status);
+
+  return (
+    <Modal title={`Commande #${order.number}`} onClose={onClose}>
+      <div className="space-y-3 text-sm">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Date</span>
+          <span className="font-medium">{formatDate(order.createdAt)}</span>
         </div>
-        <button
-          onClick={onClose}
-          className="mt-6 w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          Fermer
-        </button>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Client</span>
+          <span className="font-medium">{order.clientName}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Produit</span>
+          <span className="font-medium">{order.productName}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Quantité</span>
+          <span className="font-medium">{order.quantity}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Montant</span>
+          <span className="font-semibold tabular-nums">{formatMoney(order.amount, currency)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Mode de paiement</span>
+          <span className="font-medium">{order.paymentMethod}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Adresse</span>
+          <span className="max-w-[55%] text-right font-medium">{order.address || "—"}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Statut actuel</span>
+          <span className={`status-badge status-${tone}`}>
+            {tone === "success" && <CheckCircle2 className="size-3" />}
+            {order.status}
+          </span>
+        </div>
       </div>
-    </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="detail-status" className="text-xs font-medium text-muted-foreground">
+            Changer le statut
+          </label>
+          <select
+            id="detail-status"
+            value={order.status}
+            disabled={cancelled}
+            onChange={(e) => onStatusChange(e.target.value as OrderStatus)}
+            className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
+          >
+            {ORDER_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="detail-payment" className="text-xs font-medium text-muted-foreground">
+            Paiement
+          </label>
+          <select
+            id="detail-payment"
+            value={order.paymentStatus}
+            disabled={cancelled}
+            onChange={(e) => onPaymentChange(e.target.value as PaymentStatus)}
+            className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
+          >
+            <option value="En attente">En attente</option>
+            <option value="Payée">Payée</option>
+          </select>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">
+        {cancelled
+          ? "Cette commande est annulée : le stock a été remis à jour et elle ne peut plus être modifiée."
+          : "Si vous annulez la commande, la quantité est automatiquement remise en stock."}
+      </p>
+
+      <button
+        type="button"
+        onClick={onClose}
+        className="mt-5 w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+      >
+        Fermer
+      </button>
+    </Modal>
   );
 }
 
 function CommandesPage() {
+  const { items: orders, update: updateOrders, ready } = useOrders();
+  const { items: clients } = useClients();
+  const { items: products, update: updateProducts } = useProducts();
+  const { currency } = useSettingsSnapshot();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("Toutes");
-  const [selectedOrder, setSelectedOrder] = useState<(typeof orders)[number] | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showNewOrder, setShowNewOrder] = useState(false);
 
+  const selectedOrder = orders.find((o) => o.id === selectedId) ?? null;
+
+  const sortedOrders = useMemo(
+    () => [...orders].sort((a, b) => b.number - a.number),
+    [orders],
+  );
+
   const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
+    const term = search.trim().toLowerCase();
+    return sortedOrders.filter((order) => {
       const matchesSearch =
-        [order.id, order.customer, order.product].some((field) =>
-          field.toLowerCase().includes(search.trim().toLowerCase())
-        ) || order.rawAmount.toString().includes(search.trim());
-      const matchesFilter =
-        activeFilter === "Toutes" || order.status === filterToStatus[activeFilter];
+        !term ||
+        `#${order.number}`.includes(term) ||
+        String(order.number).includes(term) ||
+        order.clientName.toLowerCase().includes(term) ||
+        order.productName.toLowerCase().includes(term) ||
+        String(order.amount).includes(term);
+      const matchesFilter = activeFilter === "Toutes" || order.status === filterToStatus[activeFilter];
       return matchesSearch && matchesFilter;
     });
-  }, [search, activeFilter]);
+  }, [sortedOrders, search, activeFilter]);
+
+  const handleCreate = ({ client, product, quantity, paymentMethod, paymentStatus, address }: NewOrderInput) => {
+    const number = orders.reduce((max, o) => Math.max(max, o.number), 1000) + 1;
+    const order: Order = {
+      id: newId(),
+      number,
+      clientId: client.id,
+      clientName: client.name,
+      productId: product.id,
+      productName: product.name,
+      quantity,
+      amount: product.price * quantity,
+      status: "Nouvelle",
+      paymentStatus,
+      paymentMethod,
+      address,
+      createdAt: new Date().toISOString(),
+    };
+    updateOrders((list) => [order, ...list]);
+    updateProducts((list) =>
+      list.map((p) => (p.id === product.id ? { ...p, stock: Math.max(0, p.stock - quantity) } : p)),
+    );
+
+    pushNotification({
+      type: "Commande",
+      title: `Nouvelle commande #${number}`,
+      message: `${client.name} : ${quantity} × ${product.name} (${formatMoney(order.amount, currency)}).`,
+      detailsTo: "/commandes",
+    });
+    const remaining = Math.max(0, product.stock - quantity);
+    if (stockStatus({ ...product, stock: remaining }) !== "En stock") {
+      pushNotification({
+        type: "Stock",
+        title: remaining === 0 ? "Rupture de stock" : "Stock bas",
+        message:
+          remaining === 0
+            ? `« ${product.name} » n'est plus disponible.`
+            : `Il reste ${remaining} unité(s) de « ${product.name} ».`,
+        detailsTo: "/produits",
+      });
+    }
+    setShowNewOrder(false);
+  };
+
+  const handleStatusChange = (order: Order, status: OrderStatus) => {
+    if (order.status === "Annulée" || status === order.status) return;
+    if (
+      status === "Annulée" &&
+      !window.confirm("Annuler cette commande ? La quantité sera remise en stock et la commande ne pourra plus être modifiée.")
+    ) {
+      return;
+    }
+    updateOrders((list) => list.map((o) => (o.id === order.id ? { ...o, status } : o)));
+    if (status === "Annulée") {
+      updateProducts((list) =>
+        list.map((p) => (p.id === order.productId ? { ...p, stock: p.stock + order.quantity } : p)),
+      );
+    }
+  };
+
+  const handlePaymentChange = (order: Order, paymentStatus: PaymentStatus) => {
+    if (order.status === "Annulée") return;
+    updateOrders((list) => list.map((o) => (o.id === order.id ? { ...o, paymentStatus } : o)));
+    if (paymentStatus === "Payée" && order.paymentStatus !== "Payée") {
+      pushNotification({
+        type: "Paiement",
+        title: "Paiement reçu",
+        message: `${order.clientName} a réglé la commande #${order.number} (${formatMoney(order.amount, currency)}).`,
+        detailsTo: "/ventes",
+      });
+    }
+  };
 
   return (
-    <div className="dashboard-canvas min-h-screen bg-background font-sans text-foreground antialiased">
-      <MobileHeader />
-      <div className="mx-auto flex max-w-[1440px]">
-        <Sidebar />
-        <main className="min-w-0 flex-1 px-4 pb-24 pt-6 sm:px-7 sm:pt-8 lg:px-8 lg:pb-10">
-          <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <AppShell active="commandes">
+      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-display text-[30px] font-semibold leading-tight sm:text-[36px]">Commandes</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Gérez et suivez toutes vos commandes.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowNewOrder(true)}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-brand transition-colors hover:bg-primary/90"
+        >
+          <Plus className="size-4" />
+          Nouvelle commande
+        </button>
+      </header>
+
+      <section className="content-card mb-3.5">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher une commande ou un client..."
+            className="w-full rounded-lg border border-input bg-background py-2.5 pl-9 pr-4 text-sm outline-none ring-ring transition-shadow focus:ring-2"
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Filtrer par statut">
+          {filters.map((filter) => {
+            const active = filter === activeFilter;
+            return (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setActiveFilter(filter)}
+                aria-pressed={active}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {filter}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="content-card">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="section-title">Liste des commandes</h2>
+          <span className="text-xs font-semibold text-primary">{filteredOrders.length} commande(s)</span>
+        </div>
+
+        {ready && orders.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <span className="grid size-12 place-items-center rounded-xl bg-secondary text-primary">
+              <ClipboardList className="size-6" strokeWidth={1.8} />
+            </span>
             <div>
-              <h1 className="flex items-center gap-2 font-display text-[30px] font-semibold leading-tight sm:text-[36px]">
-                Commandes
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">Gérez et suivez toutes vos commandes.</p>
+              <p className="text-sm font-semibold">Aucune commande pour le moment</p>
+              <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                Créez votre première commande : le stock du produit sera mis à jour automatiquement.
+              </p>
             </div>
             <button
+              type="button"
               onClick={() => setShowNewOrder(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-brand transition-colors hover:bg-primary/90"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               <Plus className="size-4" />
               Nouvelle commande
             </button>
-          </header>
-
-          <section className="content-card mb-3.5">
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Rechercher une commande ou un client..."
-                  className="w-full rounded-lg border border-input bg-background py-2.5 pl-9 pr-4 text-sm outline-none ring-ring transition-shadow focus:ring-2"
-                />
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {filters.map((filter) => {
-                const active = filter === activeFilter;
-                return (
-                  <button
-                    key={filter}
-                    onClick={() => setActiveFilter(filter)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-                  >
-                    {filter}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="content-card">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="section-title">Liste des commandes</h2>
-              <span className="text-xs font-semibold text-primary">{filteredOrders.length} commande(s)</span>
-            </div>
-            <div className="divide-y divide-border/70">
-              {filteredOrders.map((order) => {
-                const tone = statusTone(order.status);
-                return (
-                  <div
-                    key={order.id}
-                    className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 py-3.5 sm:grid-cols-[80px_1fr_120px_110px_90px]"
-                  >
-                    <p className="text-sm font-semibold text-primary">{order.id}</p>
-                    <div className="sm:order-none">
-                      <p className="text-sm font-medium">{order.customer}</p>
-                      <p className="text-xs text-muted-foreground">{order.product}</p>
-                    </div>
-                    <p className="order-4 text-sm font-semibold tabular-nums sm:order-none sm:text-right">{order.amount}</p>
-                    <span className={`status-badge status-${tone}`}>
-                      {tone === "success" && <CheckCircle2 className="size-3" />}
-                      {order.status}
-                    </span>
-                    <button
-                      onClick={() => setSelectedOrder(order)}
-                      className="order-5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent sm:order-none"
-                    >
-                      Voir
-                    </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-border/70">
+            {filteredOrders.map((order) => {
+              const tone = orderStatusTone(order.status);
+              return (
+                <div
+                  key={order.id}
+                  className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 py-3.5 sm:grid-cols-[80px_1fr_140px_120px_70px]"
+                >
+                  <p className="text-sm font-semibold text-primary">#{order.number}</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{order.clientName}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {order.productName}
+                      {order.quantity > 1 ? ` (x${order.quantity})` : ""}
+                    </p>
                   </div>
-                );
-              })}
-              {filteredOrders.length === 0 && (
-                <div className="py-8 text-center text-sm text-muted-foreground">Aucune commande ne correspond à votre recherche.</div>
-              )}
-            </div>
-          </section>
-        </main>
-      </div>
-      <MobileNav />
+                  <div className="order-4 sm:order-none sm:text-right">
+                    <p className="text-sm font-semibold tabular-nums">{formatMoney(order.amount, currency)}</p>
+                    <p className="text-[11px] text-muted-foreground">{order.paymentStatus}</p>
+                  </div>
+                  <span className={`status-badge status-${tone}`}>
+                    {tone === "success" && <CheckCircle2 className="size-3" />}
+                    {order.status}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(order.id)}
+                    className="order-5 justify-self-start rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground sm:order-none sm:justify-self-end"
+                  >
+                    Voir
+                  </button>
+                </div>
+              );
+            })}
+            {ready && filteredOrders.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Aucune commande ne correspond à votre recherche.
+              </p>
+            )}
+          </div>
+        )}
+      </section>
 
-      {selectedOrder && <OrderDetail order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
+      {selectedOrder && (
+        <OrderDetail
+          order={selectedOrder}
+          currency={currency}
+          onStatusChange={(status) => handleStatusChange(selectedOrder, status)}
+          onPaymentChange={(status) => handlePaymentChange(selectedOrder, status)}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
 
       {showNewOrder && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-          <div className="w-full max-w-sm rounded-t-2xl border border-border/70 bg-card p-5 shadow-float backdrop-blur-xl sm:rounded-2xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-lg font-semibold">Nouvelle commande</h2>
-              <button
-                onClick={() => setShowNewOrder(false)}
-                aria-label="Fermer"
-                className="grid size-8 place-items-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-accent"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Cette fonctionnalité sera connectée au backend dans une prochaine étape.
-            </p>
-            <button
-              onClick={() => setShowNewOrder(false)}
-              className="mt-6 w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
+        <NewOrderForm
+          clients={clients}
+          products={products}
+          currency={currency}
+          onSave={handleCreate}
+          onClose={() => setShowNewOrder(false)}
+        />
       )}
-    </div>
+    </AppShell>
   );
 }
